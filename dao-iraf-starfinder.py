@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Dec 31 12:25:29 2024
-
-@author: lucie
-"""
-
-# -*- coding: utf-8 -*-
-"""
 Created on Tue Nov 26 14:36:58 2024
 
 @author: lucie
