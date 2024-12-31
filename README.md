@@ -13,4 +13,4 @@ Plots are displayed in interactive mode using Matplotlib's _ion_ function. If yo
 
 **calibration.py** is an initial program (currently under development) that compares the coordinates of stars identified by the DAOPHOT algorithm to those listed in SIMBAD for the same cluster. The goal is to match stars between the datasets, allowing the instrumental and established BVR magnitudes to be paired and calibrated. Once calibration is complete, I will begin producing colour-magnitude diagrams for the clusters.
 
-The example `.fits` file for NGC 7686 can be used to test the code. Additionally, a selection of my images is provided for reference.
+The example `.fits` file for NGC 7686 can be used to test the code. Additionally, a selection of my images is provided for reference. This code is provided for academic purposes as part of my MSci Project and is not intended for redistribution or commercial use.
