@@ -6,7 +6,7 @@ The primary aim of this project is to explore the capabilities of the DAOPHOT _s
 
 The DAOPHOT algorithm is implemented in **DAOPHOT-starfinder.py**, which outputs Excel files containing the coordinates and magnitude estimates. To run the program on different source images, you must use the `.fits` file's cluster name and BVR filter information to update the variables in the script, as these details influence the naming of the output Excel files. The program also generates:
 - Starfield images
-- Background distribution plots using the Photutils _Background2D_ function
+- Background distribution plots using the `photutils` _Background2D_ function
 - Starfield plots with points overlaid to indicate the 35 brightest stars identified by DAOPHOT  
 
 Plots are displayed in interactive mode using Matplotlib's _ion_ function. If you are testing the program, ensure your IDE or console supports interactive plotting.
