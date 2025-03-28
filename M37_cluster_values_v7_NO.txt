@@ -1,6 +1,0 @@
-Distance to cluster: 866.97 Pc 
-Distance modulus (mu): 9.690 ± 0.257 
-Av: 0.965 ± 0.244 
-E(B-V): E(B-V) = 0.311 ± 0.079 
-Z: 0.0142 
-Age of cluster: 501.19 Million Years
