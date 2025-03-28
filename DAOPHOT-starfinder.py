@@ -59,8 +59,8 @@ def Image(cluster_name):
     cbar = plt.colorbar(ax=ax, orientation='vertical', pad=0.08, fraction=0.046)
     cbar.set_label('Intensity', fontsize=10) 
     #plt.colorbar()
-    plt.xlabel('RA')
-    plt.ylabel('DEC')
+    plt.xlabel(r'$\alpha$ (RA)')
+    plt.ylabel(r'$\delta$ (DEC)')
     
 def Background(cluster_name):
     '''Plots the background image'''
@@ -76,17 +76,15 @@ def Background(cluster_name):
     cbar = plt.colorbar(ax=ax, orientation='vertical', pad=0.08, fraction=0.046)
     cbar.set_label('Intensity', fontsize=10) 
     #plt.colorbar()
-    plt.xlabel('RA')
-    plt.ylabel('DEC')
+    plt.xlabel(r'$\alpha$ (RA)')
+    plt.ylabel(r'$\delta$ (DEC)')
     
-def perform_aperture_photometry(image, positions, fwhm, exp):
-    aperture_radius = 3*fwhm
+def perform_aperture_photometry(image, positions, fwhm):
+    aperture_radius = 1*fwhm
     apertures = CircularAperture(positions, r=aperture_radius)
     phot_table = aperture_photometry(image, apertures)
-    #GAIN = 2.3900001049041748
-    GAIN = 2.39
     aperture_sum = phot_table['aperture_sum']
-    N_counts = (GAIN*aperture_sum)/exp
+    N_counts = (aperture_sum)
     
     return N_counts
     
@@ -101,17 +99,22 @@ def StarIdentifierDao(name, cluster_name, exp, dao, image, image_bg_subtracted, 
     #print("DAO World Coordinates (RA, Dec):", DAOworld_coords)
     DAO_RA, DAO_DEC = zip(*DAOworld_coords)
     
-    N_counts = perform_aperture_photometry(image_bg_subtracted, positions, fwhm, exp)
+    N_counts = perform_aperture_photometry(image_bg_subtracted, positions, fwhm)
+    #print(max(N_counts))
     #extract counts (N)
     #compute magnitudes and errors using Poisson stats
-    inst_mags = -2.5*np.log10(N_counts)
-    sigma_N = np.sqrt(N_counts)
-    inst_mag_errors = (2.5/np.log(10))*(sigma_N/N_counts)
+    #CCD GAIN = 2.3900001049041748
+    GAIN = 2.39
+    inst_mags = -2.5*np.log10(N_counts/exp)
+    N_e = N_counts*GAIN
+    sigma_N = np.sqrt(N_e)
+    inst_mag_errors = (2.5/np.log(10))*(sigma_N/N_e)
     
     phot_df = pd.DataFrame({'RA': DAO_RA,'DEC': DAO_DEC,FILTER: inst_mags,FILTER+' Error': inst_mag_errors})
 
-    excel_file = name+'_dao_magnitudes_'+FILTER+'.xlsx'
-    with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
+    excel_file = name+f'_{file_no}_dao_magnitudes_'+FILTER+'.xlsx' #variability
+    #excel_file = name+'_dao_magnitudes_'+FILTER+'.xlsx' #normal
+    with pd.ExcelWriter(file_path+excel_file, engine='openpyxl') as writer:
         phot_df.to_excel(writer, index=False, sheet_name='Sheet 1', float_format='%.4f')
 
         worksheet1 = writer.sheets['Sheet 1']
@@ -134,8 +137,8 @@ def StarIdentifierDao(name, cluster_name, exp, dao, image, image_bg_subtracted, 
     mid = np.median(image)
     plt.imshow(image, cmap='Greys', origin='lower', vmin=mid-(0.3*mid), vmax=mid+(0.5*mid))
     ax.invert_yaxis()
-    plt.xlabel('RA')
-    plt.ylabel('DEC')
+    plt.xlabel(r'$\alpha$ (RA)')
+    plt.ylabel(r'$\delta$ (DEC)')
     cbar = plt.colorbar(ax=ax, orientation='vertical', pad=0.05, fraction=0.046)
     cbar.set_label('Intensity', fontsize=10) 
     #plt.colorbar()
@@ -156,7 +159,7 @@ def DATABASE(name,RA,DEC,search_width):
     customSimbad = Simbad()
     customSimbad.TIMEOUT = 120  # Adjust timeout in case of large queries
     #customSimbad.remove_votable_fields('coordinates')  # Remove unnecessary fields
-    customSimbad.add_votable_fields('flux(B)', 'flux(V)')  # Add B and V magnitudes
+    customSimbad.add_votable_fields('pm', 'flux(B)', 'flux(V)') # Add B and V magnitudes
 
     c = SkyCoord(ra=RA, dec=DEC, frame='icrs', unit=(u.hourangle, u.deg))
     
@@ -164,7 +167,8 @@ def DATABASE(name,RA,DEC,search_width):
     #ra_deg=c.ra.deg
     #dec_deg=c.dec.deg
     result_table = customSimbad.query_region(c, radius=r)
-    print(result_table)
+    #print(result_table)
+    #print(result_table.colnames)
     
     valid_data = []
 
@@ -184,13 +188,16 @@ def DATABASE(name,RA,DEC,search_width):
                 'RA (deg)': ra_result_deg,
                 'DEC (deg)': dec_result_deg,
                 'B': B_mag,
-                'V': V_mag
+                'V': V_mag,
+                'PMRA': row['PMRA'],
+                'PMDEC': row['PMDEC']
             })
 
 
     df = pd.DataFrame(valid_data)
-    excel_file = name+FILTER+'_simbad_magnitudes.xlsx'
-    with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
+    excel_file = name+FILTER+f'_{file_no}_simbad_magnitudes.xlsx' #VARIABILITY
+    #excel_file = name+FILTER+'_simbad_magnitudes.xlsx' #normal
+    with pd.ExcelWriter(file_path+excel_file, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Sheet 1', float_format='%.4f')
 
         worksheet1 = writer.sheets['Sheet 1']
@@ -208,18 +215,23 @@ plt.ion()
 
 #TARGET IMAGE: NGC7686-0001_G_30.fits
 #m34_30s_b_1.fit
+folder_name = 'NGC744-Variability1'
 name = 'NGC744'
-FILTER = 'B'
+FILTER = 'V'
 exp = '60s'
 EXPOSURE_TIME = 60
-version = '0004'
-#image_file = name+'-'+version+'_'+FILTER+'_'+exp+'.fits'
-image_file = name+'-'+version+'_'+exp+'_'+FILTER+'.fits'
-#image_file = 'm34_30s_v_1.fit'
+#version = '0002'
+file_no = 20
+#image_file = name+'-'+version+'_'+FILTER+'_'+exp+'.fits'  #NGC 7686
+#image_file = name+'-'+version+'_'+exp+'_'+FILTER+'.fits' #NGC 744
+#image_file = name+'_'+exp+'_'+FILTER+'_'+version+'.fit' M34 last year
+#image_file = f'ngc744_{file_no}-0001_60s_r.fits' #variability R
+image_file = f'ngc744_{file_no}-0001_60s_v.fits' #variability V
 #format figure titles with cluster_name
 cluster_name = name+' '+exp+'/'+FILTER
 
-header_data_unit_list = fits.open(image_file)
+file_path = '/Users/lucie/OneDrive/Documents/Uni Y4/Major Project/Calibration/NEW/'+folder_name+'/'
+header_data_unit_list = fits.open(file_path+image_file)
 
 image = header_data_unit_list[0].data
 header = header_data_unit_list[0].header
@@ -247,7 +259,12 @@ background_image = B2D.background
 #background_mean = np.median(background_image)
 #background_std = np.std(background_image)
 #threshold = background_mean + (5*background_std) 
-threshold = 100
+if FILTER == 'V':
+    threshold = 180
+elif FILTER == 'R':
+    threshold = 180
+elif FILTER == 'B':
+    threshold = 80
 print("threshold: ",threshold)  
 
 
@@ -255,7 +272,7 @@ print("threshold: ",threshold)
 fwhm=12
 '''Runs DAOPHOT algorithm and subtracts Background2D'''
 #SPECIFY A SIGMA_RADIUS OF 3 RATHER THAN THE PRESUMED VALUE OF 1.5
-daofind = DAOStarFinder(fwhm=fwhm, threshold=threshold, brightest=(35))#, min_separation=3,)
+daofind = DAOStarFinder(fwhm=fwhm, threshold=threshold)#, brightest=(50))#, min_separation=3,)
 image_bg_subtracted = image - background_image
 dao = daofind(image_bg_subtracted)
 sigma_T = fwhm/2.355
@@ -273,10 +290,12 @@ DAO_DEC = np.array(DAO_DEC)
 #print(len(DAO_RA))
 #print(len(DAO_DEC))
 
-search_width = 7 #CHANGE BASED ON SIMBAD IMAGE 
+search_width = 10 #CHANGE BASED ON SIMBAD IMAGE 
 #df = DATABASE(name,'02h42m07.4s' ,'+42d43m19s', search_width) #M34
 #df = DATABASE(name, '23h29m41.3s', '+49d10m12s', search_width) #NGC 7686
 df = DATABASE(name, '01h58m36.5s', '+55d28m23s', search_width) #NGC 744
+#df = DATABASE(name, '05h52m17.8s', '+32d32m42s', search_width) #M37
+#df = DATABASE(name, '06h09m05.3s', '+24d20m10s', search_width) #M35
 #df = DATABASE(name, '05h36m20.2s', '+34d08m06s', search_width) #M36
 SIM_RA = df['RA (deg)'].values
 #print(SIM_RA)
@@ -296,3 +315,7 @@ plt.show()
 #hdul = fits.open(image_file)
 #hdr = hdul[0].header
 #print(hdr)
+
+#with fits.open(file_path+image_file) as hdul:
+    #data = hdul[0].data  # Image data
+    #print(f"Min: {np.min(data)}, Max: {np.max(data)}, Mean: {np.mean(data)}")
